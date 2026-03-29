@@ -214,3 +214,12 @@ resource "aws_kms_alias" "ebs" {
   name          = "alias/${var.project}-${var.environment}-ebs"
   target_key_id = aws_kms_key.ebs.key_id
 }
+
+# Enforce EBS encryption by default account-wide
+resource "aws_ebs_encryption_by_default" "enabled" {
+  enabled = true
+}
+
+resource "aws_ebs_default_kms_key" "default" {
+  key_arn = aws_kms_key.ebs.arn
+}

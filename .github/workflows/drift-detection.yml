@@ -1,0 +1,76 @@
+name: CDE Infrastructure Drift Detection
+
+on:
+  schedule:
+    - cron: '0 8 * * 1-5' # Run at 8 AM UTC Monday-Friday
+  workflow_dispatch:      # Allow manual trigger
+
+permissions:
+  id-token: write         # Required for OIDC AWS auth
+  contents: read
+  issues: write           # Required to create an issue on drift
+
+env:
+  TF_DIR: terraform
+
+jobs:
+  detect-drift:
+    name: Detect Terraform Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # In a real environment, configure AWS credentials via OIDC
+      # - name: Configure AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: arn:aws:iam::123456789012:role/github-actions-cde-role
+      #     aws-region: sa-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+
+      - name: Terraform Init
+        run: terraform -chdir=${{ env.TF_DIR }} init
+
+      - name: Terraform Plan (Detailed Exitcode)
+        id: plan
+        # -detailed-exitcode returns:
+        # 0 = Succeeded, diff is empty (no drift)
+        # 1 = Errored
+        # 2 = Succeeded, there is a diff (drift detected)
+        run: |
+          # Use placeholder for validation check if no real AWS creds
+          terraform -chdir=${{ env.TF_DIR }} plan -detailed-exitcode \
+            -var="acm_certificate_arn=arn:aws:acm:sa-east-1:123456789012:certificate/placeholder" \
+            -out=tfplan || exit_code=$?
+
+          if [ "$exit_code" -eq 2 ]; then
+            echo "Drift detected!"
+            # Save the plan output for the issue
+            terraform -chdir=${{ env.TF_DIR }} show -no-color tfplan > tfplan.txt
+            exit 2
+          elif [ "$exit_code" -eq 1 ]; then
+            echo "Terraform plan failed"
+            exit 1
+          else
+            echo "Infrastructure matches Terraform configuration."
+            exit 0
+          fi
+
+      - name: Create Issue on Drift
+        if: failure() && steps.plan.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Infrastructure Drift Detected in CDE',
+              body: 'Terraform has detected drift between the configuration in `main` and the actual AWS infrastructure in the CDE.\n\nInvestigate immediately to ensure no unauthorized manual changes were made (PCI-DSS monitoring requirement).\n\nCheck the [Actions run](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ') for details.'
+            })

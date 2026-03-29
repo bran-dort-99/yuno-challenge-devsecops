@@ -143,6 +143,14 @@ Stages 2-4 run in parallel (GitHub Actions `needs` dependency only on Stage 1). 
 - **Pre-commit hooks are optional but recommended:** We don't force pre-commit installation because it creates friction for new team members. Instead, we provide `scripts/pre-flight.sh` as a one-command check.
 - **Clear severity policy:** Developers know exactly what blocks and what warns — no ambiguity, no "it depends on the reviewer."
 
+### 3.5 Incident Response Support
+
+While this document focuses on prevention, our architecture is designed to support rapid forensic investigation during an incident:
+- **Timeline Reconstruction:** Multi-region CloudTrail with 365-day retention allows investigators to reconstruct exact API call sequences.
+- **Data Exfiltration Forensics:** S3 data events for the CDE bucket track every `GetObject` and `PutObject` call, enabling accurate blast radius calculation if credentials are compromised.
+- **Log Integrity:** CloudTrail log file validation and KMS encryption ensure attackers cannot tamper with logs to cover their tracks.
+- **Network Forensics:** VPC Flow Logs sent to CloudWatch provide a complete record of successful and rejected network connections.
+
 ---
 
 ## 4. Residual Risks

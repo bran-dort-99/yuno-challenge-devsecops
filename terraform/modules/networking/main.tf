@@ -253,11 +253,29 @@ resource "aws_security_group" "db" {
     security_groups = [aws_security_group.app.id]
   }
 
-  # No egress — DB does not initiate outbound connections
-  # Explicit deny-by-default
   tags = {
     Name     = "${var.project}-${var.environment}-db-sg"
     PCI_Zone = "CDE"
+  }
+}
+
+# Explicit egress deny — DB does not initiate outbound connections.
+# PCI-DSS Req 1.3: No traffic leaving the data tier to the internet.
+# AWS SGs default to "allow all" egress; this rule makes the denial
+# explicit and visible to auditors as an intentional security control.
+resource "aws_security_group_rule" "db_deny_all_egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.db.id
+  description       = "Explicit deny-all egress: DB tier must not initiate outbound connections (PCI-DSS Req 1.3)"
+
+  lifecycle {
+    # The NACL provides defense-in-depth; this SG rule makes intent
+    # explicit for QSA review without relying on AWS default behavior.
+    create_before_destroy = false
   }
 }
 

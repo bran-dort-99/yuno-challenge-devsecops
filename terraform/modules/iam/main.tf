@@ -57,7 +57,10 @@ resource "aws_iam_role_policy" "ecs_execution" {
         Sid      = "AllowECRAuth"
         Effect   = "Allow"
         Action   = "ecr:GetAuthorizationToken"
-        Resource = "*" # ECR auth token is account-wide by design
+        # PCI-DSS Req 7.2: ECR GetAuthorizationToken does not support resource-level permissions.
+        # It must be "*" by AWS design. This does not grant access to pull from any repository,
+        # only to get an auth token. The actual pull permissions are scoped above.
+        Resource = "*"
       },
       {
         Sid    = "AllowCloudWatchLogs"

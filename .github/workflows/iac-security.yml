@@ -51,6 +51,19 @@ jobs:
         with:
           terraform_version: "1.5.7"
 
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Set Terraform Plugin Cache Dir
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
+
       - name: Terraform Format Check
         id: fmt
         run: terraform -chdir=${{ env.TF_DIR }} fmt -check -recursive -diff
