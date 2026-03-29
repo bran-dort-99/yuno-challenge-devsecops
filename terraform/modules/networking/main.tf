@@ -31,6 +31,12 @@ resource "aws_vpc" "cde" {
   }
 }
 
+# PCI-DSS Req 1.3: Default SG must restrict all traffic
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.cde.id
+  # Empty ingress and egress implicitly denies all traffic
+}
+
 # ── Subnets ───────────────────────────────────────────────────
 
 # Public subnets — ONLY for ALB (internet-facing load balancer)
@@ -168,6 +174,7 @@ resource "aws_route_table_association" "private_data" {
 
 # ALB Security Group — only accepts HTTPS from the internet
 # PCI-DSS Req 4: Encrypt data in transit (TLS only)
+#checkov:skip=CKV2_AWS_5: SG is attached to the ALB in the compute module.
 resource "aws_security_group" "alb" {
   name        = "${var.project}-${var.environment}-alb-sg"
   description = "ALB: HTTPS from internet only. No HTTP."
@@ -197,6 +204,7 @@ resource "aws_security_group" "alb" {
 
 # Application Security Group — accepts traffic from ALB only
 # PCI-DSS Req 1.2: Restrict to only necessary connections
+#checkov:skip=CKV2_AWS_5: SG is attached to the ECS Service in the compute module.
 resource "aws_security_group" "app" {
   name        = "${var.project}-${var.environment}-app-sg"
   description = "App tier: ingress from ALB only, egress to DB and HTTPS."
@@ -240,6 +248,7 @@ resource "aws_security_group_rule" "app_egress_https" {
 
 # Database Security Group — accepts traffic from app tier only
 # PCI-DSS Req 1.3: No public internet access to data stores
+#checkov:skip=CKV2_AWS_5: SG is attached to the RDS DB in the storage module.
 resource "aws_security_group" "db" {
   name        = "${var.project}-${var.environment}-db-sg"
   description = "DB tier: ingress from app tier only, no egress."
@@ -259,25 +268,7 @@ resource "aws_security_group" "db" {
   }
 }
 
-# Explicit egress deny — DB does not initiate outbound connections.
-# PCI-DSS Req 1.3: No traffic leaving the data tier to the internet.
-# AWS SGs default to "allow all" egress; this rule makes the denial
-# explicit and visible to auditors as an intentional security control.
-resource "aws_security_group_rule" "db_deny_all_egress" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.db.id
-  description       = "Explicit deny-all egress: DB tier must not initiate outbound connections (PCI-DSS Req 1.3)"
 
-  lifecycle {
-    # The NACL provides defense-in-depth; this SG rule makes intent
-    # explicit for QSA review without relying on AWS default behavior.
-    create_before_destroy = false
-  }
-}
 
 # ── Network ACLs (defense in depth) ──────────────────────────
 
