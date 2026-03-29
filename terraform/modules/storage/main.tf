@@ -12,8 +12,8 @@
 
 # ── S3: CDE Cardholder Data Backup Bucket ─────────────────────
 
-#checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
 resource "aws_s3_bucket" "cde_data" {
+  #checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
   bucket = "${var.project}-${var.environment}-cde-data-${var.account_id}"
 
   # PCI-DSS Req 3.1: Limit storage duration — lifecycle rules below
@@ -121,13 +121,13 @@ resource "aws_s3_bucket_policy" "cde_data_tls_only" {
 
 # ── S3: Access Logs Bucket ────────────────────────────────────
 
-#checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
 resource "aws_s3_bucket" "access_logs" {
+  #checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
   bucket = "${var.project}-${var.environment}-access-logs-${var.account_id}"
 
   tags = {
-    Name     = "${var.project}-${var.environment}-access-logs"
-    Purpose  = "S3 access log storage for CDE audit trail"
+    Name    = "${var.project}-${var.environment}-access-logs"
+    Purpose = "S3 access log storage for CDE audit trail"
   }
 }
 
@@ -169,6 +169,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
     expiration {
       days = 365
     }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 }
 
@@ -190,15 +194,15 @@ resource "random_password" "db_master" {
 }
 
 # Store password in Secrets Manager — PCI-DSS Req 8
-#checkov:skip=CKV2_AWS_57: Secret rotation not implemented yet.
 resource "aws_secretsmanager_secret" "db_password" {
+  #checkov:skip=CKV2_AWS_57: Secret rotation not implemented yet.
   name                    = "${var.project}/${var.environment}/rds-master-password"
   description             = "RDS master password for CDE database"
   recovery_window_in_days = 30
   kms_key_id              = var.s3_kms_key_arn # Encrypt the secret itself
 
   tags = {
-    Name     = "${var.project}-${var.environment}-db-password"
+    Name      = "${var.project}-${var.environment}-db-password"
     PCI_Scope = "In-Scope"
   }
 }
@@ -249,9 +253,9 @@ resource "aws_db_instance" "cde" {
   maintenance_window      = "sun:04:00-sun:05:00"
 
   # Enhanced monitoring — PCI-DSS Req 10
-  monitoring_interval          = 60
-  monitoring_role_arn          = var.rds_monitoring_role_arn
-  performance_insights_enabled = true
+  monitoring_interval             = 60
+  monitoring_role_arn             = var.rds_monitoring_role_arn
+  performance_insights_enabled    = true
   performance_insights_kms_key_id = var.rds_kms_key_arn
 
   # Enforce SSL connections — PCI-DSS Req 4

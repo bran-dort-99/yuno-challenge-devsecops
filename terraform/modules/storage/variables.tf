@@ -1,6 +1,6 @@
-variable "project"     { type = string }
+variable "project" { type = string }
 variable "environment" { type = string }
-variable "account_id"  { type = string }
+variable "account_id" { type = string }
 
 variable "s3_kms_key_arn" {
   description = "ARN of the KMS CMK for S3 encryption"

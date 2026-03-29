@@ -54,9 +54,9 @@ resource "aws_iam_role_policy" "ecs_execution" {
         Resource = "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/${var.project}-*"
       },
       {
-        Sid      = "AllowECRAuth"
-        Effect   = "Allow"
-        Action   = "ecr:GetAuthorizationToken"
+        Sid    = "AllowECRAuth"
+        Effect = "Allow"
+        Action = "ecr:GetAuthorizationToken"
         # PCI-DSS Req 7.2: ECR GetAuthorizationToken does not support resource-level permissions.
         # It must be "*" by AWS design. This does not grant access to pull from any repository,
         # only to get an auth token. The actual pull permissions are scoped above.

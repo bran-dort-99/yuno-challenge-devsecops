@@ -1,4 +1,4 @@
-variable "project"     { type = string }
+variable "project" { type = string }
 variable "environment" { type = string }
 
 variable "db_secret_arn" {

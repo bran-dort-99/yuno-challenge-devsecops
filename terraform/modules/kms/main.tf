@@ -27,8 +27,8 @@ resource "aws_kms_key" "rds" {
         Resource  = "*"
       },
       {
-        Sid    = "AllowRDSServiceAccess"
-        Effect = "Allow"
+        Sid       = "AllowRDSServiceAccess"
+        Effect    = "Allow"
         Principal = { Service = "rds.amazonaws.com" }
         Action = [
           "kms:Encrypt",
@@ -78,8 +78,8 @@ resource "aws_kms_key" "s3" {
         Resource  = "*"
       },
       {
-        Sid    = "AllowS3ServiceAccess"
-        Effect = "Allow"
+        Sid       = "AllowS3ServiceAccess"
+        Effect    = "Allow"
         Principal = { Service = "s3.amazonaws.com" }
         Action = [
           "kms:Encrypt",
@@ -123,8 +123,8 @@ resource "aws_kms_key" "logs" {
         Resource  = "*"
       },
       {
-        Sid    = "AllowCloudTrailEncrypt"
-        Effect = "Allow"
+        Sid       = "AllowCloudTrailEncrypt"
+        Effect    = "Allow"
         Principal = { Service = "cloudtrail.amazonaws.com" }
         Action = [
           "kms:GenerateDataKey*",
@@ -138,8 +138,8 @@ resource "aws_kms_key" "logs" {
         }
       },
       {
-        Sid    = "AllowCloudWatchLogs"
-        Effect = "Allow"
+        Sid       = "AllowCloudWatchLogs"
+        Effect    = "Allow"
         Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" }
         Action = [
           "kms:Encrypt",
@@ -188,8 +188,8 @@ resource "aws_kms_key" "ebs" {
         Resource  = "*"
       },
       {
-        Sid    = "AllowEC2Service"
-        Effect = "Allow"
+        Sid       = "AllowEC2Service"
+        Effect    = "Allow"
         Principal = { Service = "ec2.amazonaws.com" }
         Action = [
           "kms:Encrypt",

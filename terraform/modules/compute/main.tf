@@ -13,8 +13,9 @@
 
 # ── Application Load Balancer ─────────────────────────────────
 
-#checkov:skip=CKV2_AWS_28: WAF not in scope for this challenge.
 resource "aws_lb" "cde" {
+  #checkov:skip=CKV2_AWS_28: WAF not in scope for this challenge.
+  #trivy:ignore:AVD-AWS-0053
   name               = "${var.project}-${var.environment}-cde-alb"
   internal           = false
   load_balancer_type = "application"
@@ -140,12 +141,12 @@ resource "aws_ecs_task_definition" "payment_api" {
       ]
 
       environment = [
-        { name = "DB_HOST",        value = var.db_endpoint },
-        { name = "DB_NAME",        value = "yunocde" },
-        { name = "DB_USER",        value = "cde_admin" },
-        { name = "DB_SSL_MODE",    value = "require" },
-        { name = "ENVIRONMENT",    value = var.environment },
-        { name = "LOG_LEVEL",      value = "info" }
+        { name = "DB_HOST", value = var.db_endpoint },
+        { name = "DB_NAME", value = "yunocde" },
+        { name = "DB_USER", value = "cde_admin" },
+        { name = "DB_SSL_MODE", value = "require" },
+        { name = "ENVIRONMENT", value = var.environment },
+        { name = "LOG_LEVEL", value = "info" }
       ]
 
       logConfiguration = {

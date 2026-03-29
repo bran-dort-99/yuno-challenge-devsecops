@@ -16,9 +16,9 @@ data "aws_region" "current" {}
 
 # ── CloudTrail S3 Bucket ─────────────────────────────────────
 
-#checkov:skip=CKV_AWS_18: Access logging skipped for CloudTrail bucket to prevent recursive loops.
-#checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
 resource "aws_s3_bucket" "cloudtrail" {
+  #checkov:skip=CKV_AWS_18: Access logging skipped for CloudTrail bucket to prevent recursive loops.
+  #checkov:skip=CKV2_AWS_62: Event notifications not configured for challenge.
   bucket = "${var.project}-${var.environment}-cloudtrail-${data.aws_caller_identity.current.account_id}"
 
   tags = {
@@ -102,7 +102,7 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         Resource  = "${aws_s3_bucket.cloudtrail.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
         Condition = {
           StringEquals = {
-            "s3:x-amz-acl" = "bucket-owner-full-control"
+            "s3:x-amz-acl"  = "bucket-owner-full-control"
             "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project}-${var.environment}-trail"
           }
         }
@@ -159,7 +159,7 @@ resource "aws_cloudtrail" "cde" {
   }
 
   tags = {
-    Name     = "${var.project}-${var.environment}-trail"
+    Name      = "${var.project}-${var.environment}-trail"
     PCI_Scope = "In-Scope"
   }
 

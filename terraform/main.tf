@@ -46,8 +46,8 @@ module "monitoring" {
   project     = var.project
   environment = var.environment
 
-  logs_kms_key_arn      = module.kms.logs_key_arn
-  cde_bucket_arn        = module.storage.cde_bucket_arn
+  logs_kms_key_arn       = module.kms.logs_key_arn
+  cde_bucket_arn         = module.storage.cde_bucket_arn
   cloudtrail_cw_role_arn = module.iam.flow_logs_role_arn
 }
 
@@ -79,9 +79,9 @@ module "storage" {
   s3_kms_key_arn  = module.kms.s3_key_arn
   rds_kms_key_arn = module.kms.rds_key_arn
 
-  db_subnet_ids          = module.networking.private_data_subnet_ids
-  db_sg_id               = module.networking.db_sg_id
-  db_instance_class      = var.db_instance_class
+  db_subnet_ids           = module.networking.private_data_subnet_ids
+  db_sg_id                = module.networking.db_sg_id
+  db_instance_class       = var.db_instance_class
   rds_monitoring_role_arn = module.iam.rds_monitoring_role_arn
 }
 
@@ -106,8 +106,8 @@ module "compute" {
   acm_certificate_arn    = var.acm_certificate_arn
   container_image        = var.container_image
 
-  db_endpoint            = module.storage.rds_endpoint
-  db_secret_arn          = module.storage.db_secret_arn
-  ecs_log_group_name     = module.monitoring.ecs_log_group_name
-  access_logs_bucket_id  = module.storage.access_logs_bucket_id
+  db_endpoint           = module.storage.rds_endpoint
+  db_secret_arn         = module.storage.db_secret_arn
+  ecs_log_group_name    = module.monitoring.ecs_log_group_name
+  access_logs_bucket_id = module.storage.access_logs_bucket_id
 }

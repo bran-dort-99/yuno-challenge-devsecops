@@ -1,15 +1,15 @@
-variable "project"     { type = string }
+variable "project" { type = string }
 variable "environment" { type = string }
-variable "aws_region"  { type = string }
+variable "aws_region" { type = string }
 
-variable "vpc_id"                 { type = string }
-variable "public_subnet_ids"      { type = list(string) }
+variable "vpc_id" { type = string }
+variable "public_subnet_ids" { type = list(string) }
 variable "private_app_subnet_ids" { type = list(string) }
-variable "alb_sg_id"              { type = string }
-variable "app_sg_id"              { type = string }
+variable "alb_sg_id" { type = string }
+variable "app_sg_id" { type = string }
 
 variable "ecs_execution_role_arn" { type = string }
-variable "ecs_task_role_arn"      { type = string }
+variable "ecs_task_role_arn" { type = string }
 
 variable "acm_certificate_arn" {
   description = "ARN of the ACM certificate for HTTPS (TLS 1.2+)"
@@ -46,7 +46,7 @@ variable "desired_count" {
   default     = 2
 }
 
-variable "db_endpoint"       { type = string }
+variable "db_endpoint" { type = string }
 variable "db_secret_arn" {
   type      = string
   sensitive = true

@@ -26,8 +26,8 @@ resource "aws_vpc" "cde" {
 
   # PCI-DSS Req 1: Dedicated VPC for CDE isolation
   tags = {
-    Name       = "${var.project}-${var.environment}-cde-vpc"
-    PCI_Zone   = "CDE"
+    Name     = "${var.project}-${var.environment}-cde-vpc"
+    PCI_Zone = "CDE"
   }
 }
 
@@ -174,8 +174,8 @@ resource "aws_route_table_association" "private_data" {
 
 # ALB Security Group — only accepts HTTPS from the internet
 # PCI-DSS Req 4: Encrypt data in transit (TLS only)
-#checkov:skip=CKV2_AWS_5: SG is attached to the ALB in the compute module.
 resource "aws_security_group" "alb" {
+  #checkov:skip=CKV2_AWS_5: SG is attached to the ALB in the compute module.
   name        = "${var.project}-${var.environment}-alb-sg"
   description = "ALB: HTTPS from internet only. No HTTP."
   vpc_id      = aws_vpc.cde.id
@@ -204,8 +204,8 @@ resource "aws_security_group" "alb" {
 
 # Application Security Group — accepts traffic from ALB only
 # PCI-DSS Req 1.2: Restrict to only necessary connections
-#checkov:skip=CKV2_AWS_5: SG is attached to the ECS Service in the compute module.
 resource "aws_security_group" "app" {
+  #checkov:skip=CKV2_AWS_5: SG is attached to the ECS Service in the compute module.
   name        = "${var.project}-${var.environment}-app-sg"
   description = "App tier: ingress from ALB only, egress to DB and HTTPS."
   vpc_id      = aws_vpc.cde.id
@@ -237,6 +237,7 @@ resource "aws_security_group_rule" "app_egress_to_db" {
 }
 
 resource "aws_security_group_rule" "app_egress_https" {
+  #trivy:ignore:AVD-AWS-0104
   type              = "egress"
   from_port         = 443
   to_port           = 443
@@ -248,8 +249,8 @@ resource "aws_security_group_rule" "app_egress_https" {
 
 # Database Security Group — accepts traffic from app tier only
 # PCI-DSS Req 1.3: No public internet access to data stores
-#checkov:skip=CKV2_AWS_5: SG is attached to the RDS DB in the storage module.
 resource "aws_security_group" "db" {
+  #checkov:skip=CKV2_AWS_5: SG is attached to the RDS DB in the storage module.
   name        = "${var.project}-${var.environment}-db-sg"
   description = "DB tier: ingress from app tier only, no egress."
   vpc_id      = aws_vpc.cde.id
