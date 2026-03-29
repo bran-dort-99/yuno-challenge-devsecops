@@ -13,9 +13,9 @@
 
 # ── Application Load Balancer ─────────────────────────────────
 
+#trivy:ignore:AVD-AWS-0053
 resource "aws_lb" "cde" {
   #checkov:skip=CKV2_AWS_28: WAF not in scope for this challenge.
-  #trivy:ignore:AVD-AWS-0053
   name               = "${var.project}-${var.environment}-cde-alb"
   internal           = false
   load_balancer_type = "application"

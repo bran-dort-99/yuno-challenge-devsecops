@@ -236,8 +236,8 @@ resource "aws_security_group_rule" "app_egress_to_db" {
   description              = "Allow PostgreSQL to DB tier"
 }
 
+#trivy:ignore:AVD-AWS-0104
 resource "aws_security_group_rule" "app_egress_https" {
-  #trivy:ignore:AVD-AWS-0104
   type              = "egress"
   from_port         = 443
   to_port           = 443
