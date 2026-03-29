@@ -202,51 +202,55 @@ jobs:
     runs-on: ubuntu-latest
     needs: [terraform-validate, tfsec, checkov, trivy, secrets-scan]
     if: always()
+    timeout-minutes: 5
 
     steps:
       - name: Check scan results
         run: |
-          echo "## IaC Security Scan Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # SC2129: group all echoes into one redirect block
+          {
+            echo "## IaC Security Scan Summary"
+            echo ""
 
-          if [ "${{ needs.terraform-validate.result }}" == "failure" ]; then
-            echo "- :x: **Terraform Validate**: FAILED" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- :white_check_mark: **Terraform Validate**: PASSED" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ needs.terraform-validate.result }}" == "failure" ]; then
+              echo "- :x: **Terraform Validate**: FAILED"
+            else
+              echo "- :white_check_mark: **Terraform Validate**: PASSED"
+            fi
 
-          if [ "${{ needs.tfsec.result }}" == "failure" ]; then
-            echo "- :x: **tfsec**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- :white_check_mark: **tfsec**: PASSED" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ needs.tfsec.result }}" == "failure" ]; then
+              echo "- :x: **tfsec**: CRITICAL/HIGH findings detected"
+            else
+              echo "- :white_check_mark: **tfsec**: PASSED"
+            fi
 
-          if [ "${{ needs.checkov.result }}" == "failure" ]; then
-            echo "- :x: **Checkov**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- :white_check_mark: **Checkov**: PASSED" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ needs.checkov.result }}" == "failure" ]; then
+              echo "- :x: **Checkov**: CRITICAL/HIGH findings detected"
+            else
+              echo "- :white_check_mark: **Checkov**: PASSED"
+            fi
 
-          if [ "${{ needs.trivy.result }}" == "failure" ]; then
-            echo "- :x: **Trivy**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- :white_check_mark: **Trivy**: PASSED" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ needs.trivy.result }}" == "failure" ]; then
+              echo "- :x: **Trivy**: CRITICAL/HIGH findings detected"
+            else
+              echo "- :white_check_mark: **Trivy**: PASSED"
+            fi
 
-          if [ "${{ needs.secrets-scan.result }}" == "failure" ]; then
-            echo "- :x: **Gitleaks**: Secrets detected!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- :white_check_mark: **Gitleaks**: No secrets found" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ needs.secrets-scan.result }}" == "failure" ]; then
+              echo "- :x: **Gitleaks**: Secrets detected!"
+            else
+              echo "- :white_check_mark: **Gitleaks**: No secrets found"
+            fi
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Severity Policy" >> $GITHUB_STEP_SUMMARY
-          echo "| Severity | Action |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| CRITICAL | **Block merge** — must fix before deployment |" >> $GITHUB_STEP_SUMMARY
-          echo "| HIGH | **Block merge** — security risk too high for CDE |" >> $GITHUB_STEP_SUMMARY
-          echo "| MEDIUM | **Warn** — visible in PR, tracked for remediation |" >> $GITHUB_STEP_SUMMARY
-          echo "| LOW | **Info** — logged for awareness |" >> $GITHUB_STEP_SUMMARY
+            echo ""
+            echo "### Severity Policy"
+            echo "| Severity | Action |"
+            echo "|----------|--------|"
+            echo "| CRITICAL | **Block merge** — must fix before deployment |"
+            echo "| HIGH | **Block merge** — security risk too high for CDE |"
+            echo "| MEDIUM | **Warn** — visible in PR, tracked for remediation |"
+            echo "| LOW | **Info** — logged for awareness |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enforce gate
         if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
