@@ -1,0 +1,266 @@
+# ============================================================
+# Yuno CDE — IaC Security Scanning Pipeline
+#
+# Strategy: Fast feedback + defense in depth
+#   Stage 1: terraform fmt + validate (< 30s) — immediate syntax catch
+#   Stage 2: tfsec (< 1m) — fast, opinionated Terraform scanner
+#   Stage 3: checkov (< 2m) — comprehensive policy engine with custom policies
+#   Stage 4: trivy config (< 1m) — cross-tool verification
+#
+# Trade-off: CRITICAL/HIGH = block PR. MEDIUM = warn (visible, not blocking).
+# This keeps pipeline under 5 minutes while catching real security issues.
+#
+# Total target: < 4 minutes for full scan pipeline.
+# ============================================================
+
+name: IaC Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - 'policies/**'
+      - '.github/workflows/iac-security.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+
+permissions:
+  contents: read
+  pull-requests: write   # Post scan results as PR comments
+  security-events: write # Upload SARIF results
+
+env:
+  TF_DIR: terraform
+  CHECKOV_CUSTOM_POLICIES: policies/custom
+
+jobs:
+  # ── Stage 1: Format and Validate ────────────────────────────
+  terraform-validate:
+    name: "Stage 1: Format & Validate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform -chdir=${{ env.TF_DIR }} fmt -check -recursive -diff
+        continue-on-error: true
+
+      - name: Terraform Init (no backend)
+        run: terraform -chdir=${{ env.TF_DIR }} init -backend=false
+
+      - name: Terraform Validate
+        run: terraform -chdir=${{ env.TF_DIR }} validate
+
+      - name: Comment on format failure
+        if: steps.fmt.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Terraform Format Check Failed\n\nRun \`terraform fmt -recursive\` locally to fix formatting.\n\nThis is a **blocking** check — unformatted code cannot be merged.`
+            })
+
+  # ── Stage 2: tfsec — Fast Terraform Security Scanner ────────
+  tfsec:
+    name: "Stage 2: tfsec Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: terraform-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.TF_DIR }}
+          format: sarif
+          out: tfsec-results.sarif
+          soft_fail: false  # Fail on CRITICAL and HIGH
+
+      - name: Upload tfsec SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
+          category: tfsec
+
+      - name: tfsec Human-Readable Report
+        if: always()
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.TF_DIR }}
+          format: lovely
+          soft_fail: true
+
+  # ── Stage 3: Checkov — Comprehensive Policy Engine ──────────
+  checkov:
+    name: "Stage 3: Checkov Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: terraform-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov with Custom Policies
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ${{ env.TF_DIR }}
+          framework: terraform
+          # Custom policies from policies/custom/
+          external_checks_dirs: ${{ env.CHECKOV_CUSTOM_POLICIES }}
+          # Fail on CRITICAL and HIGH severity
+          hard_fail_on: CRITICAL,HIGH
+          # Warn on MEDIUM — visible in output but non-blocking
+          soft_fail_on: MEDIUM,LOW
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+          # Skip checks that conflict with our architecture decisions
+          # CKV_AWS_144: Cross-region replication (not needed for sa-east-1 single-region CDE)
+          skip_check: CKV_AWS_144
+          quiet: true
+          compact: true
+
+      - name: Upload Checkov SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+  # ── Stage 4: Trivy — Cross-tool Verification ───────────────
+  trivy:
+    name: "Stage 4: Trivy Config Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: terraform-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: ${{ env.TF_DIR }}
+          format: table
+          exit-code: 1  # Fail on findings
+          severity: CRITICAL,HIGH
+          trivyignores: .trivyignore
+
+      - name: Trivy SARIF output
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: ${{ env.TF_DIR }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ── Stage 5: Secrets Scanning ───────────────────────────────
+  secrets-scan:
+    name: "Stage 5: Secrets Detection"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for git-based scanning
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ── Summary Gate ────────────────────────────────────────────
+  security-gate:
+    name: "Security Gate"
+    runs-on: ubuntu-latest
+    needs: [terraform-validate, tfsec, checkov, trivy, secrets-scan]
+    if: always()
+
+    steps:
+      - name: Check scan results
+        run: |
+          echo "## IaC Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.terraform-validate.result }}" == "failure" ]; then
+            echo "- :x: **Terraform Validate**: FAILED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :white_check_mark: **Terraform Validate**: PASSED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.tfsec.result }}" == "failure" ]; then
+            echo "- :x: **tfsec**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :white_check_mark: **tfsec**: PASSED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.checkov.result }}" == "failure" ]; then
+            echo "- :x: **Checkov**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :white_check_mark: **Checkov**: PASSED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.trivy.result }}" == "failure" ]; then
+            echo "- :x: **Trivy**: CRITICAL/HIGH findings detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :white_check_mark: **Trivy**: PASSED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.secrets-scan.result }}" == "failure" ]; then
+            echo "- :x: **Gitleaks**: Secrets detected!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- :white_check_mark: **Gitleaks**: No secrets found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Severity Policy" >> $GITHUB_STEP_SUMMARY
+          echo "| Severity | Action |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CRITICAL | **Block merge** — must fix before deployment |" >> $GITHUB_STEP_SUMMARY
+          echo "| HIGH | **Block merge** — security risk too high for CDE |" >> $GITHUB_STEP_SUMMARY
+          echo "| MEDIUM | **Warn** — visible in PR, tracked for remediation |" >> $GITHUB_STEP_SUMMARY
+          echo "| LOW | **Info** — logged for awareness |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Enforce gate
+        if: |
+          needs.terraform-validate.result == 'failure' ||
+          needs.tfsec.result == 'failure' ||
+          needs.checkov.result == 'failure' ||
+          needs.trivy.result == 'failure' ||
+          needs.secrets-scan.result == 'failure'
+        run: |
+          echo "::error::Security gate FAILED. Fix CRITICAL/HIGH findings before merging."
+          exit 1

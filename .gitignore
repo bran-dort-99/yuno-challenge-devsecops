@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# Terraform state and local files
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
