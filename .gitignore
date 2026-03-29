@@ -8,6 +8,7 @@
 *.tfstate
 *.tfstate.backup
 .terraform/
-.terraform.lock.hcl
+# NOTE: .terraform.lock.hcl is intentionally committed — it pins provider
+# versions and hashes for reproducible CI builds and supply chain security.
 *.tfvars
 *.tfvars.json

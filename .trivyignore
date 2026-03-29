@@ -1,0 +1,18 @@
+# Trivy IaC scan ignore rules for yuno-cde-secure
+#
+# Format: one rule per line
+#   AVD-AWS-XXXX    — ignore specific Trivy check ID
+#   AVD-AWS-XXXX /path/to/file.tf  — ignore only in specific file
+#
+# Document all suppressions with a rationale below.
+#
+# ------------------------------------------------------------
+# CURRENT SUPPRESSIONS
+# ------------------------------------------------------------
+#
+# AVD-AWS-0144 — S3 cross-region replication not configured
+# REASON: This is a single-region CDE deployment in sa-east-1.
+#         Cross-region replication is not a PCI-DSS requirement for
+#         a single-region deployment. Backups are retained for 365 days
+#         locally per Req 10.7. Re-evaluate if multi-region is required.
+# AVD-AWS-0144
