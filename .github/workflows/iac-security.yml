@@ -105,9 +105,8 @@ jobs:
         with:
           working_directory: ${{ env.TF_DIR }}
           format: sarif
-          out: tfsec-results.sarif
           soft_fail: false  # Fail on CRITICAL and HIGH
-          additional_args: "--minimum-severity HIGH"
+          additional_args: "--out tfsec-results.sarif --minimum-severity HIGH"
 
       - name: Upload tfsec SARIF
         if: always()
@@ -166,7 +165,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trivy config scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: config
           scan-ref: ${{ env.TF_DIR }}
@@ -176,7 +175,7 @@ jobs:
 
       - name: Trivy SARIF output
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: config
           scan-ref: ${{ env.TF_DIR }}
@@ -206,7 +205,7 @@ jobs:
       - name: Run Gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
-            | tar -xz -C /usr/local/bin gitleaks
+            | sudo tar -xz -C /usr/local/bin gitleaks
           gitleaks detect --source . --no-git --verbose --redact
 
   # ── Summary Gate ────────────────────────────────────────────

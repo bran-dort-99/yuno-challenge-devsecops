@@ -47,6 +47,9 @@ variable "desired_count" {
 }
 
 variable "db_endpoint"       { type = string }
-variable "db_secret_arn"     { type = string sensitive = true }
+variable "db_secret_arn" {
+  type      = string
+  sensitive = true
+}
 variable "ecs_log_group_name" { type = string }
 variable "access_logs_bucket_id" { type = string }
